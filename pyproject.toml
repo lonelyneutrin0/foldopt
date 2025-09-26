@@ -3,9 +3,9 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pypi-template"
+name = "foldopt"
 dynamic = ["version"]
-description = "pypi-template"
+description = "Protein conformation optimization!"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"
@@ -22,11 +22,11 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "numpy~=1.26.3"
+    "numpy"
 ]
 
 [project.urls]
-Homepage = "https://github.com/lonelyneutrin0/pypi-template"
+Homepage = "https://github.com/lonelyneutrin0/foldopt"
 
 [project.optional-dependencies]
 dev = [
@@ -43,11 +43,11 @@ examples = [
 ]
 
 [tool.hatch.version]
-path = "pypi_template/__init__.py"
+path = "foldopt/__init__.py"
 
 [tool.hatch.build.targets.sdist]
 include = [
-    "/pypi_template",
+    "/foldopt",
 ]
 
 [tool.pytest.ini_options]
