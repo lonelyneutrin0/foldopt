@@ -13,6 +13,3 @@ np.savez('4rxn_run.npz', energies=out.energies, accepts=out.accepts, rejects=out
 plt.plot(out.energies[1000:])
 plt.show()
 plt.close() 
-
-plt.plot(np.cumsum(out.accepts))
-plt.show()
