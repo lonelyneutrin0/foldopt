@@ -15,7 +15,7 @@ class RunData:
     temperatures: ArrayLike
     conformations: List
 
-def metropolis_annealing(self, initial_temp: float, final_temp: float, cooling_rate: float, lam: float, *, rng: Optional[np.random.Generator] = None) -> RunData:
+def metropolis_annealing(self, initial_temp: float, final_temp: float, cooling_rate: float, lam: float, chain_length: int, *, rng: Optional[np.random.Generator] = None) -> RunData:
     """Perform simulated annealing using the Metropolis criterion.
 
     Args:
@@ -43,20 +43,19 @@ def metropolis_annealing(self, initial_temp: float, final_temp: float, cooling_r
         current_energy = self.energy()
         energies[step] = current_energy
 
-        # Generate a new conformation by perturbing the current one
-        new_conformation = self.perturb(lam, ts=step/num_iterations, rng=rng)
-        conformations.append(new_conformation)
-        new_energy = self.energy(new_conformation.conformation)
+        for i in range(chain_length):
+            # Generate a new conformation by perturbing the current one
+            new_conformation = self.perturb(lam, ts=step/num_iterations, rng=rng)
+            new_energy = self.energy(new_conformation.conformation)
 
-        # Calculate energy difference
-        delta_e = new_energy - current_energy
+            # Calculate energy difference
+            delta_e = new_energy - current_energy
 
-        # Metropolis criterion
-        if delta_e < 0 or rnds[step] < np.exp(-inv_temps[step] * delta_e):
-            self.mirror(new_conformation)
-            accepts[step] = 1
-        else:
-            rejects[step] = 1
+            # Metropolis criterion
+            if delta_e < 0 or rnds[step] < np.exp(-inv_temps[step] * delta_e):
+                self.mirror(new_conformation)
+        
+        conformations.append(self.conformation)
             
     return RunData(
         energies=energies,
