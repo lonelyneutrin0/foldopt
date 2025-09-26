@@ -1,19 +1,19 @@
-# pypi-template 
+# foldopt
 
-[![Custom shields.io](https://img.shields.io/badge/docs-brightgreen?logo=github&logoColor=green&label=gh-pages)](https://lonelyneutrin0.github.io/pypi-template/)
-[![PyPI version shields.io](https://img.shields.io/pypi/v/neurop.svg)](https://pypi.python.org/pypi/pypi-template/)
-[![PyPI pyversions shields.io](https://img.shields.io/pypi/pyversions/neurop.svg)](https://pypi.python.org/pypi/pypi-template/)
+[![Custom shields.io](https://img.shields.io/badge/docs-brightgreen?logo=github&logoColor=green&label=gh-pages)](https://lonelyneutrin0.github.io/foldopt/)
+[![PyPI version shields.io](https://img.shields.io/pypi/v/neurop.svg)](https://pypi.python.org/pypi/foldopt/)
+[![PyPI pyversions shields.io](https://img.shields.io/pypi/pyversions/neurop.svg)](https://pypi.python.org/pypi/foldopt/)
 
-## About pypi-template
+## About foldopt
 
 ## Usage
-`pypi-template` is published on [PyPi](https://pypi.python.org/pypi/pypi-template/) and can be installed using `pip` - 
+`foldopt` is published on [PyPi](https://pypi.python.org/pypi/foldopt/) and can be installed using `pip` - 
 ```
-pip install pypi-template
+pip install foldopt
 ```
 
 ## License
-`pypi-template` is available under the MIT License.
+`foldopt` is available under the MIT License.
 
 ## Attribution
 
