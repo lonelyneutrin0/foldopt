@@ -58,7 +58,7 @@ class Angle:
 class IrbackModel(ProteinModel):
     """Irback's off-lattice protein model implementation."""
 
-    residues: NDArray[np.bool]
+    residues: NDArray
     """Hydrophobicity of the residues. 1 for hydrophilic, 0 for hydrophobic."""
 
 
@@ -88,7 +88,7 @@ class IrbackModel(ProteinModel):
     def beta(self, value: NDArray):
         self._beta.__set__(self, value)
     
-    def _map_residue_hydrophobicity(self, residue: str) -> NDArray[np.bool]:
+    def _map_residue_hydrophobicity(self, residue: str) -> NDArray:
         """Map hydrophilic residues to 1, and hydrophobic residues to 0."""
 
         # This code could be a lot better, but works
