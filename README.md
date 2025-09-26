@@ -1,5 +1,5 @@
 # foldopt
-
+This is a (major) refactor of one of my older projects that can be found [here](https://github.com/lonelyneutrin0/Protein-Structure-Prediction)!
 [![Custom shields.io](https://img.shields.io/badge/docs-brightgreen?logo=github&logoColor=green&label=gh-pages)](https://lonelyneutrin0.github.io/foldopt/)
 [![PyPI version shields.io](https://img.shields.io/pypi/v/neurop.svg)](https://pypi.python.org/pypi/foldopt/)
 [![PyPI pyversions shields.io](https://img.shields.io/pypi/pyversions/neurop.svg)](https://pypi.python.org/pypi/foldopt/)
