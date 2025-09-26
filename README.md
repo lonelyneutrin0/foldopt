@@ -5,6 +5,7 @@
 [![PyPI pyversions shields.io](https://img.shields.io/pypi/pyversions/neurop.svg)](https://pypi.python.org/pypi/foldopt/)
 
 ## About foldopt
+This is a (major) refactor of one of my older projects that can be found [here](https://github.com/lonelyneutrin0/Protein-Structure-Prediction)!
 
 ## Usage
 `foldopt` is published on [PyPi](https://pypi.python.org/pypi/foldopt/) and can be installed using `pip` - 
