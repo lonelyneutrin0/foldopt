@@ -1,5 +1,5 @@
 """Irback's off-lattice protein model implementation."""
-from typing import Optional, Self
+from typing import Optional
 from .base import ProteinModel
 
 from numpy.typing import NDArray
