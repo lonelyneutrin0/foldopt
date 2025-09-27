@@ -139,8 +139,8 @@ class IrbackModel(ProteinModel):
         total_energy = backbone_bending + torsion_energy + np.sum(np.triu(4*distance_matrix*self._get_coefficients(), k=2))
         return total_energy
     
-    def perturb(self, lam: float, ts: float, rng: np.random.Generator) -> Self:
-        """Generate a new IrbackModel by perturbing the current one.
+    def propose(self, lam: float, ts: float, rng: np.random.Generator):
+        """Generate a new proposed state by perturbing either a bond or torsion angle.
 
         Args:
             lam (float): Perturbation factor. Higher values lead to larger distances
@@ -148,29 +148,27 @@ class IrbackModel(ProteinModel):
             ts (float): Timescale parameter between 0 and 1.
             rng (np.random.Generator, optional): Random number generator for reproducibility.
         
-        Returns:
-            IrbackModel: New perturbed IrbackModel instance.
         """
         random_i = np.random.randint(self.alpha.shape[0] + self.beta.shape[0])
 
         change = (np.random.uniform(0, 1) - 0.5)*np.random.uniform(0, 1) * (1 - ts)**lam
 
         if random_i < self.alpha.size:
-            new_alpha = self.alpha.copy()
-            new_alpha[random_i] += change
-            new_beta = self.beta.copy() 
+            self.alpha[random_i] += change
+
+        else:
+            self.beta[random_i - self.alpha.size] += change
+
+        self.perturb_idx = random_i
+        self.change = change
+
+    def revert(self, ): 
+        """Revert the last proposed change."""
+        if self.perturb_idx is None:
+            return 
         
-        else: 
-            new_beta = self.beta.copy()
-            new_beta[random_i - self.alpha.size] += change
-            new_alpha = self.alpha.copy()
+        if self.perturb_idx < self.alpha.size:
+            self.alpha[self.perturb_idx] -= self.change
 
-        return self.__class__(sequence=self.sequence, alpha=new_alpha, beta=new_beta)
-
-    def mirror(self, other: Self):
-        self.sequence = other.sequence
-        self.residues = other.residues.copy()
-        self.size = other.size
-        self.alpha = other.alpha.copy()
-        self.beta = other.beta.copy()
-
+        else:
+            self.beta[self.perturb_idx - self.alpha.size] -= self.change

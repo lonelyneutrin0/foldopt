@@ -23,8 +23,8 @@ class ProteinModel(ABC):
         pass 
 
     @abstractmethod
-    def perturb(self, *args, **kwargs) -> Self:
-        """Generate a new ProteinModel by perturbing the current one.
+    def propose(self, *args, **kwargs):
+        """Propose a new state by perturbing the current conformation.
 
         Args:
             lam (float): Perturbation factor. Higher values lead to larger distances
@@ -34,8 +34,8 @@ class ProteinModel(ABC):
         pass
 
     @abstractmethod
-    def mirror(self, *args, **kwargs):
-        """Mirror the parameters of a different protein model."""
+    def revert(self,):
+        """Revert to the previous state."""
         pass
     
     def set_optimizer(self, opt: OptAlgo): 

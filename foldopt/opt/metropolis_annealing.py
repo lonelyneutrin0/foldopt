@@ -45,15 +45,17 @@ def metropolis_annealing(self, initial_temp: float, final_temp: float, cooling_r
 
         for i in range(chain_length):
             # Generate a new conformation by perturbing the current one
-            new_conformation = self.perturb(lam, ts=step/num_iterations, rng=rng)
-            new_energy = self.energy(new_conformation.conformation)
+            self.propose(lam, ts=step/num_iterations, rng=rng)
+            new_energy = self.energy()
 
             # Calculate energy difference
             delta_e = new_energy - current_energy
 
             # Metropolis criterion
             if delta_e < 0 or rnds[step] < np.exp(-inv_temps[step] * delta_e):
-                self.mirror(new_conformation)
+                continue
+            else: 
+                self.revert()
         
         conformations.append(self.conformation)
             
