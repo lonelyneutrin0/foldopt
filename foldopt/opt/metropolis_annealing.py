@@ -37,7 +37,7 @@ def metropolis_annealing(self, initial_temp: float, final_temp: float, cooling_r
     accepts = np.zeros(num_iterations)
     rejects = np.zeros(num_iterations)
     rnds = rng.random(num_iterations) if rng else np.random.random(num_iterations)
-    conformations = [self]
+    conformations = [self.conformation]
 
     for step in tqdm(range(num_iterations), desc="Optimizing", unit="step", unit_scale=True):
         current_energy = self.energy()
