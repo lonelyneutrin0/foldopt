@@ -5,7 +5,10 @@ from .base import ProteinModel
 from numpy.typing import NDArray
 import numpy as np
 
+from scipy.spatial import cKDTree
+
 """Descriptor for bond and torsion angles, with periodic wrapping to [-π, π]."""
+
 class Angle:
     def __init__(self, size: int, alpha: Optional[NDArray] = None):
         if alpha is None: 
@@ -35,6 +38,9 @@ class Angle:
         # Apply wrapping and store
         self._value = self._wrap_angles(value)
 
+        if hasattr(obj, '_invalidate_caches'):
+            obj._invalidate_caches()
+
     def __array__(self,) -> NDArray:
         """Return the angle values as a NumPy array."""
         return self._value
@@ -62,13 +68,75 @@ class IrbackModel(ProteinModel):
     """Hydrophobicity of the residues. 1 for hydrophilic, 0 for hydrophobic."""
 
 
-    def __init__(self, sequence: str, alpha: Optional[NDArray] = None, beta: Optional[NDArray] = None):
+    def __init__(self, sequence: str, alpha: Optional[NDArray] = None, beta: Optional[NDArray] = None, 
+                 use_cutoff: bool = True, cutoff_distance: float = 10.0):
         self.sequence = sequence
         self.residues = self._map_residue_hydrophobicity(sequence)
         self.size = len(sequence)
 
+        self.use_cutoff = use_cutoff
+        self.cutoff_distance = cutoff_distance
+
         self._alpha = Angle(self.size-2, alpha)
         self._beta = Angle(self.size-3, beta)
+
+        self._coefficients = self._get_coefficients()
+
+        self._trig_cache_valid = False
+        self._cos_alpha = None 
+        self._sin_alpha = None
+        self._cos_beta = None
+        self._sin_beta = None
+
+        self._conformation_cache_valid = False
+        self._cached_conformation = None 
+
+        self._energy_cache_valid = False
+        self._cached_energy = None
+
+        self._tree_cache_valid = False
+        self._cached_tree = None
+        self._tree_positions = None 
+
+        self._positions_work = np.zeros((self.size, 3), dtype=np.float64)
+        self._distance_matrix_work = np.zeros((self.size, self.size), dtype=np.float64)
+
+        self._upper_triu_mask = np.triu(np.ones((self.size, self.size), dtype=bool), k=2)
+        
+        # Initialize state tracking for propose/revert
+        self.perturb_idx = None
+        self.change = None
+
+        self.cache_stats = { 
+            'conformation_hits': 0,
+            'conformation_misses': 0,
+            'energy_hits': 0,
+            'energy_misses': 0,
+            'trig_hits': 0,
+            'trig_misses': 0,
+            'tree_hits': 0,
+            'tree_misses': 0,
+        }
+
+    def _invalidate_caches(self,):
+        """Invalidate all cached values."""
+        self._trig_cache_valid = False
+        self._conformation_cache_valid = False
+        self._energy_cache_valid = False
+        self._tree_cache_valid = False
+    
+    def _update_trig_cache(self,):
+        """Update the cached trigonometric values if invalid."""
+        if not self._trig_cache_valid:
+            self._cos_alpha = np.cos(self.alpha)
+            self._sin_alpha = np.sin(self.alpha)
+            self._cos_beta = np.cos(self.beta)
+            self._sin_beta = np.sin(self.beta)
+
+            self._trig_cache_valid = True
+            self.cache_stats['trig_misses'] += 1
+        else:
+            self.cache_stats['trig_hits'] += 1
 
     @property
     def alpha(self,) -> NDArray:
@@ -99,7 +167,6 @@ class IrbackModel(ProteinModel):
 
     def _get_coefficients(self,) -> NDArray:
         """Get the coefficients for the energy calculation."""
-
         residues = self.residues.astype(float) 
         coeff = residues[:, np.newaxis]*residues 
         coeff[coeff == 0] = 0.5
@@ -108,36 +175,118 @@ class IrbackModel(ProteinModel):
     @property
     def conformation(self,) -> NDArray:
         """Get the current conformation as a 2D array of shape (N, 3)."""
-        cos_alpha = np.cos(self.alpha)
-        sin_alpha = np.sin(self.alpha)
-        cos_beta = np.cos(self.beta)
-        sin_beta = np.sin(self.beta)
+
+        if self._conformation_cache_valid and self._cached_conformation is not None:
+            self.cache_stats['conformation_hits'] += 1
+            return self._cached_conformation
+
+        self.cache_stats['conformation_misses'] += 1
+        self._update_conformation()
+        return self._cached_conformation
+    
+    def _update_conformation(self,):
+        """Update the cached conformation if invalid."""
+
+        self._update_trig_cache()
+
+        positions = self._positions_work
+        positions.fill(0.0)
         
-        positions = np.zeros((self.size, 3), dtype=np.float64)
         positions[0] = np.array([0.0, 0.0, 0.0])
         positions[1] = np.array([0.0, 1.0, 0.0])
-        positions[2] = positions[1] + np.array([cos_alpha[0], sin_alpha[0], 0])
+        positions[2] = positions[1] + np.array([self._cos_alpha[0], self._sin_alpha[0], 0])
 
         for i in range(self.size-3):
             positions[i+3] = positions[i+2] + \
-                            np.array([cos_alpha[i+1]*cos_beta[i], sin_alpha[i+1]*cos_beta[i], sin_beta[i]])
+                            np.array([self._cos_alpha[i+1]*self._cos_beta[i], self._sin_alpha[i+1]*self._cos_beta[i], self._sin_beta[i]])
 
-        return positions
+        self._cached_conformation = positions.copy()
+        self._conformation_cache_valid = True
 
     def energy(self, conf: Optional[NDArray] = None) -> float:
         """Calculate the energy of the current conformation."""
+        if conf is None and self._energy_cache_valid and self._cached_energy is not None:
+            self.cache_stats['energy_hits'] += 1
+            return self._cached_energy
+        
+        self.cache_stats['energy_misses'] += 1
+
         if conf is None:
             conf = self.conformation
+        
+        self._update_trig_cache()
 
-        backbone_bending = np.sum(np.cos(self.alpha))
-        torsion_energy = -0.5 * np.sum(np.cos(self.beta))
+        backbone_bending = np.sum(self._cos_alpha)
+        torsion_energy = -0.5 * np.sum(self._cos_beta)
 
-        distance_matrix = np.linalg.norm(conf[:, np.newaxis] - conf, axis=-1)
-        np.fill_diagonal(distance_matrix, np.inf)
-        distance_matrix = distance_matrix**-12 - distance_matrix**-6
+        if self.use_cutoff:
+            interaction_energy = self._compute_sparse_interaction_energy(conf)
+        else:
+            interaction_energy = self._compute_dense_interaction_energy(conf)
 
-        total_energy = backbone_bending + torsion_energy + np.sum(np.triu(4*distance_matrix*self._get_coefficients(), k=2))
+        total_energy = backbone_bending + torsion_energy + interaction_energy
+
+        # Cache the result if using current conformation
+        if conf is None:
+            self._cached_energy = total_energy
+            self._energy_cache_valid = True
+
         return total_energy
+    
+    def _compute_sparse_interaction_energy(self, conf: NDArray) -> float:
+        """Compute interaction energy using a cutoff distance for efficiency."""
+        self._build_tree(conf)
+
+        pairs = self._cached_tree.query_pairs(self.cutoff_distance, output_type='ndarray')
+
+        if len(pairs) == 0:
+            return 0.0
+        
+        valid_pairs = pairs[np.abs(pairs[:,0] - pairs[:,1]) >= 2]
+
+        if len(valid_pairs) == 0:
+            return 0.0
+        
+        i_indices = valid_pairs[:,0]
+        j_indices = valid_pairs[:,1]
+
+        distances = np.linalg.norm(conf[i_indices] - conf[j_indices], axis=1)
+
+        inv_r6 = distances**-6
+        inv_r12 = inv_r6 * inv_r6
+
+        lj = (inv_r12 - inv_r6)
+
+        coeffs = self._coefficients[i_indices, j_indices]
+        interaction_energy = np.sum(4 * lj * coeffs)
+
+        return interaction_energy
+
+    def _compute_dense_interaction_energy(self, conf: NDArray) -> float:
+        """Compute interaction energy using the full distance matrix."""
+        distance_matrix = np.linalg.norm(conf[:, np.newaxis] - conf, axis=-1)
+
+        inv_r6 = distance_matrix**-6
+        inv_r12 = inv_r6 * inv_r6
+        lj = (inv_r12 - inv_r6)
+
+        interaction_energy = np.sum(4 * lj[self._upper_triu_mask] * self._coefficients[self._upper_triu_mask])
+
+        return interaction_energy
+
+    def _build_tree(self, conf: NDArray):
+        """Build a spatial tree for efficient neighbor searching."""
+        if (not self._tree_cache_valid or 
+            self._cached_tree is None or
+            self._tree_positions is None or
+            not np.array_equal(self._tree_positions, conf)):
+
+            self._cached_tree = cKDTree(conf)
+            self._tree_positions = conf.copy()
+            self._tree_cache_valid = True
+            self.cache_stats['tree_misses'] += 1
+        else:
+            self.cache_stats['tree_hits'] += 1
     
     def propose(self, lam: float, ts: float, rng: np.random.Generator):
         """Generate a new proposed state by perturbing either a bond or torsion angle.
@@ -149,9 +298,12 @@ class IrbackModel(ProteinModel):
             rng (np.random.Generator, optional): Random number generator for reproducibility.
         
         """
-        random_i = np.random.randint(self.alpha.shape[0] + self.beta.shape[0])
+        if rng is None:
+            rng = np.random.default_rng()
+            
+        random_i = rng.integers(0, self.alpha.shape[0] + self.beta.shape[0])
 
-        change = (np.random.uniform(0, 1) - 0.5)*np.random.uniform(0, 1) * (1 - ts)**lam
+        change = (rng.uniform(0, 1) - 0.5) * rng.uniform(0, 1) * (1 - ts)**lam
 
         if random_i < self.alpha.size:
             self.alpha[random_i] += change
@@ -159,6 +311,9 @@ class IrbackModel(ProteinModel):
         else:
             self.beta[random_i - self.alpha.size] += change
 
+        # Manually invalidate caches since we modified angles directly
+        self._invalidate_caches()
+        
         self.perturb_idx = random_i
         self.change = change
 
@@ -172,3 +327,6 @@ class IrbackModel(ProteinModel):
 
         else:
             self.beta[self.perturb_idx - self.alpha.size] -= self.change
+            
+        # Manually invalidate caches since we modified angles directly
+        self._invalidate_caches()

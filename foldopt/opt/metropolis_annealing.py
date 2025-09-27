@@ -36,11 +36,16 @@ def metropolis_annealing(self, initial_temp: float, final_temp: float, cooling_r
     inv_temps = 1/initial_temp * np.power(1/cooling_rate, np.arange(num_iterations))
     accepts = np.zeros(num_iterations)
     rejects = np.zeros(num_iterations)
-    rnds = rng.random(num_iterations) if rng else np.random.random(num_iterations)
-    conformations = [self.conformation]
+    total_proposals = num_iterations * chain_length
+    rnds = rng.random(total_proposals) if rng else np.random.random(total_proposals)
+    conformations = [self.conformation.copy()]
+    current_energy = None 
 
-    for step in tqdm(range(num_iterations), desc="Optimizing", unit="step", unit_scale=True):
+    pbar = tqdm(range(num_iterations), desc=f"Energy: {current_energy}", unit="step", unit_scale=True)
+
+    for step in pbar:
         current_energy = self.energy()
+        pbar.set_description(f"Energy: {current_energy:.2f}")
         energies[step] = current_energy
 
         for i in range(chain_length):
@@ -50,14 +55,19 @@ def metropolis_annealing(self, initial_temp: float, final_temp: float, cooling_r
 
             # Calculate energy difference
             delta_e = new_energy - current_energy
+            rnd_idx = step * chain_length + i
 
-            # Metropolis criterion
-            if delta_e < 0 or rnds[step] < np.exp(-inv_temps[step] * delta_e):
-                continue
-            else: 
+            # Metropolis criterion - accept if energy is lower OR random chance
+            if delta_e < 0 or rnds[rnd_idx] < np.exp(-inv_temps[step] * delta_e):
+                # Accept the move - keep the new state
+                current_energy = new_energy
+                accepts[step] += 1
+            else:
+                # Reject the move - revert to previous state 
                 self.revert()
+                rejects[step] += 1
         
-        conformations.append(self.conformation)
+        conformations.append(self.conformation.copy())
             
     return RunData(
         energies=energies,
