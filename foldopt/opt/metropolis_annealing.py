@@ -15,7 +15,7 @@ class RunData:
     temperatures: ArrayLike
     conformations: List
 
-def metropolis_annealing(self, initial_temp: float, final_temp: float, cooling_rate: float, lam: float, *, rng: Optional[np.random.Generator] = None) -> RunData:
+def metropolis_annealing(self, initial_temp: float, final_temp: float, cooling_rate: float, lam: float, chain_length: int, *, rng: Optional[np.random.Generator] = None) -> RunData:
     """Perform simulated annealing using the Metropolis criterion.
 
     Args:
@@ -36,27 +36,38 @@ def metropolis_annealing(self, initial_temp: float, final_temp: float, cooling_r
     inv_temps = 1/initial_temp * np.power(1/cooling_rate, np.arange(num_iterations))
     accepts = np.zeros(num_iterations)
     rejects = np.zeros(num_iterations)
-    rnds = rng.random(num_iterations) if rng else np.random.random(num_iterations)
-    conformations = [self]
+    total_proposals = num_iterations * chain_length
+    rnds = rng.random(total_proposals) if rng else np.random.random(total_proposals)
+    conformations = [self.conformation.copy()]
+    current_energy = None 
 
-    for step in tqdm(range(num_iterations), desc="Optimizing", unit="step", unit_scale=True):
+    pbar = tqdm(range(num_iterations), desc=f"Energy: {current_energy}", unit="step", unit_scale=True)
+
+    for step in pbar:
         current_energy = self.energy()
+        pbar.set_description(f"Energy: {current_energy:.2f}")
         energies[step] = current_energy
 
-        # Generate a new conformation by perturbing the current one
-        new_conformation = self.perturb(lam, ts=step/num_iterations, rng=rng)
-        conformations.append(new_conformation)
-        new_energy = self.energy(new_conformation.conformation)
+        for i in range(chain_length):
+            # Generate a new conformation by perturbing the current one
+            self.propose(lam, ts=step/num_iterations, rng=rng)
+            new_energy = self.energy()
 
-        # Calculate energy difference
-        delta_e = new_energy - current_energy
+            # Calculate energy difference
+            delta_e = new_energy - current_energy
+            rnd_idx = step * chain_length + i
 
-        # Metropolis criterion
-        if delta_e < 0 or rnds[step] < np.exp(-inv_temps[step] * delta_e):
-            self.mirror(new_conformation)
-            accepts[step] = 1
-        else:
-            rejects[step] = 1
+            # Metropolis criterion - accept if energy is lower OR random chance
+            if delta_e < 0 or rnds[rnd_idx] < np.exp(-inv_temps[step] * delta_e):
+                # Accept the move - keep the new state
+                current_energy = new_energy
+                accepts[step] += 1
+            else:
+                # Reject the move - revert to previous state 
+                self.revert()
+                rejects[step] += 1
+        
+        conformations.append(self.conformation.copy())
             
     return RunData(
         energies=energies,

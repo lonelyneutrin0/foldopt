@@ -33,13 +33,13 @@ jobs:
           pip install .[dev]
       - name: Lint with ruff
         run: >-
-          ruff check pypi_template/
+          ruff check foldopt/
       - name: Check docstrings with ruff
         run: >-
-          ruff check pypi_template/ --select D
+          ruff check foldopt/ --select D
       - name: Type check with mypy
         run: >-
-          mypy pypi_template/
+          mypy foldopt/
       - name: Run tests with pytest
         run: >-
           pytest
@@ -92,7 +92,7 @@ jobs:
           pip install .[dev]
       - name: Build pdoc documentation
         run: >-
-          pdoc -d google pypi_template/ -o _build/ --math 
+          pdoc -d google foldopt/ -o _build/ --math 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:

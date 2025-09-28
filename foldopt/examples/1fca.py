@@ -9,13 +9,13 @@ from pstats import SortKey
 
 def run_optimization():
     """Function to wrap the optimization for profiling."""
-    x = IrbackModel(sequence="MKKYTCTVCGYIYDPEDGDPDDGVNPGTDFKDIPDDWVCPLCGVGKDEFEEVEE")
+    x = IrbackModel(sequence="AYVINEACISCGACEPECPVDAISQGGSRYVIDADTCIDCGACAGVCPVDAPVQA")
     x.set_optimizer(OptAlgo.METROPOLIS_ANNEALING)
     out = x.optimize(initial_temp=1.0, final_temp=1e-12, cooling_rate=0.99, lam = 3.0, chain_length=10_000)
     
     print(f'Optimal energy: {out.optimal_energy}')
     print(out.conformations[0].shape)
-    np.savez('4rxn_run.npz', energies=out.energies, accepts=out.accepts, rejects=out.rejects, 
+    np.savez('1fca_run.npz', energies=out.energies, accepts=out.accepts, rejects=out.rejects, 
              conformations=out.conformations)
     
     return out
