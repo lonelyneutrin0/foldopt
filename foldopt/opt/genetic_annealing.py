@@ -86,15 +86,7 @@ def genetic_annealing(self, initial_temp: float, final_temp: float, cooling_rate
                     parent2 = mutated_population[parent2_idx]
                     
                     if rng.uniform() < crossover_rate:
-                        # Crossover
-                        alpha_crossover = rng.integers(0, parent1.alpha.shape[0])
-                        beta_crossover = rng.integers(0, parent1.beta.shape[0])
-                        
-                        child_alpha = np.concatenate((parent1.alpha[:alpha_crossover], parent2.alpha[alpha_crossover:]))
-                        child_beta = np.concatenate((parent1.beta[:beta_crossover], parent2.beta[beta_crossover:]))
-                        
-                        child = self.__class__(sequence=self.sequence, alpha=child_alpha, beta=child_beta, 
-                                             use_cutoff=self.use_cutoff, cutoff_distance=self.cutoff_distance)
+                        child = parent1.breed(parent2)
                         new_population.append(child)
                     else:
                         new_population.append(parent1.copy())

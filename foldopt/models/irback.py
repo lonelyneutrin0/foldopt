@@ -1,5 +1,5 @@
 """Irback's off-lattice protein model implementation."""
-from typing import Optional
+from typing import Optional, Self
 from .base import ProteinModel
 
 from numpy.typing import NDArray
@@ -362,4 +362,31 @@ class IrbackModel(ProteinModel):
             new_model._tree_positions = self._tree_positions.copy()
             new_model._tree_cache_valid = True
 
+        return new_model
+    
+    def breed(self, other: Self) -> Self:
+        """Breed with another Irback model to produce an offspring.
+
+        Args:
+            other (IrbackModel): Another IrbackModel instance to breed with.
+
+        Returns:
+            IrbackModel: A new IrbackModel instance representing the offspring.
+        """
+        if not isinstance(other, self.__class__):
+            raise ValueError("Can only breed with another IrbackModel instance.")
+        
+        if self.size != other.size:
+            raise ValueError("Both models must have the same sequence length to breed.")
+
+        # Single-point crossover for alpha and beta angles
+        alpha_crossover = np.random.randint(1, self.alpha.size)
+        beta_crossover = np.random.randint(1, self.beta.size)
+
+        child_alpha = np.concatenate((self.alpha[:alpha_crossover], other.alpha[alpha_crossover:]))
+        child_beta = np.concatenate((self.beta[:beta_crossover], other.beta[beta_crossover:]))
+
+        new_model = self.__class__(self.sequence, child_alpha, child_beta, 
+                                   use_cutoff=self.use_cutoff, cutoff_distance=self.cutoff_distance)
+        
         return new_model

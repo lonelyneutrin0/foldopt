@@ -2,6 +2,7 @@
 from abc import ABC, abstractmethod
 
 from numpy.typing import ArrayLike
+from typing import Self
 
 from ..opt.base import OptAlgo
 
@@ -37,9 +38,15 @@ class ProteinModel(ABC):
         """Revert to the previous state."""
         pass
     
+    @abstractmethod
+    def breed(self, *args, **kwargs) -> Self: 
+        """Breed with another model to produce offspring."""
+        pass
+
     def set_optimizer(self, opt: OptAlgo): 
         """Set the optimizer for the protein model."""
         self.optimizer = opt.value
 
     def optimize(self, *args, **kwargs): 
         return self.optimizer(self, *args, **kwargs)
+
