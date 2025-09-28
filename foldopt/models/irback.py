@@ -330,3 +330,36 @@ class IrbackModel(ProteinModel):
             
         # Manually invalidate caches since we modified angles directly
         self._invalidate_caches()
+
+    def copy(self,):
+        """Create a deep copy of the current model instance."""
+        new_model = IrbackModel(self.sequence, self.alpha.copy(), self.beta.copy(), 
+                                use_cutoff=self.use_cutoff, cutoff_distance=self.cutoff_distance)
+        
+        new_model.perturb_idx = self.perturb_idx
+        new_model.change = self.change
+
+        new_model.cache_stats = self.cache_stats.copy()
+        
+        # Copy caches if valid
+        if self._conformation_cache_valid:
+            new_model._cached_conformation = self._cached_conformation.copy()
+            new_model._conformation_cache_valid = True
+        
+        if self._energy_cache_valid:
+            new_model._cached_energy = self._cached_energy
+            new_model._energy_cache_valid = True
+        
+        if self._trig_cache_valid:
+            new_model._cos_alpha = self._cos_alpha.copy()
+            new_model._sin_alpha = self._sin_alpha.copy()
+            new_model._cos_beta = self._cos_beta.copy()
+            new_model._sin_beta = self._sin_beta.copy()
+            new_model._trig_cache_valid = True
+        
+        if self._tree_cache_valid and self._cached_tree is not None and self._tree_positions is not None:
+            new_model._cached_tree = cKDTree(self._tree_positions.copy())
+            new_model._tree_positions = self._tree_positions.copy()
+            new_model._tree_cache_valid = True
+
+        return new_model
