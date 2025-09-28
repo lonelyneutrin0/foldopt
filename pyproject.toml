@@ -22,7 +22,9 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "numpy"
+    "numpy~=2.3.3",
+    "scipy~=1.16.2",
+    "tqdm~=4.67.1"
 ]
 
 [project.urls]
@@ -35,7 +37,6 @@ dev = [
     "ruff~=0.9.4",
     "mypy~=1.13.0",
     "pdoc~=15.0.4",
-    
 ]
 
 examples = [ 
