@@ -22,9 +22,9 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
 ]
 dependencies = [
-    "numpy~=2.3.3",
-    "scipy~=1.16.2",
-    "tqdm~=4.67.1"
+    "numpy",
+    "scipy",
+    "tqdm"
 ]
 
 [project.urls]
